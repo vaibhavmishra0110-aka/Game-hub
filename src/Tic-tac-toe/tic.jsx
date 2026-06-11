@@ -1,155 +1,83 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState } from 'react'
+import Boxes from './boxes'
 
-import wallpaperImg from '../assets/flappy bird wallpaper.png'
-import birdImg from '../assets/du0i1k2io4j6iveqeul81b2nme.png'
-import topPipeImg from '../assets/toppng.com-flappy-bird-pipe-transparent-281x1080.png'
-import botPipeImg from '../assets/opppng.com-flappy-bird-pipe-transparent-281x1080.png'
+function Tic() {
+  const [board, setBoard] = useState(Array(9).fill(null))
+  const [xIsNext, setXIsNext] = useState(true)
 
-function Flappbird() {
-    const [point, setPoint] = useState(0)
-    const [pipes, setPipes] = useState([])
+  const winner = calculateWinner(board)
+  const isDraw = !winner && board.every((square) => square !== null)
+
+  let status
+  if (winner) {
+    status = `Winner: ${winner}`
+  } else if (isDraw) {
+    status = "It's a Draw!"
+  } else {
+    status = `Next Player: ${xIsNext ? 'X' : 'O'}`
+  }
+
+  const handleClick = (index) => {
+    if (board[index] || winner) return
+
+    const newBoard = board.slice()
+    newBoard[index] = xIsNext ? 'X' : 'O'
     
-    const bird = useRef(null)
+    setBoard(newBoard)
+    setXIsNext(!xIsNext)
+  }
 
-    function incPoint() {
-        setPoint(prev => prev + 1/2)
-    }
+  const resetGame = () => {
+    setBoard(Array(9).fill(null))
+    setXIsNext(true)
+  }
 
-    useEffect(() => {
-        let velocityX = -2
-        let animationFrameId
-        
-        let bvelocityI = 0 
-        let bcurrentY = 0  
-        let gravity = 0.2
-        let endY = 450   
-        let topY = -180  
-        let lastSpawnTime = 0
-        let spawnInterval = 1500
-        
-        function handleKeyDown(e) {
-            e.preventDefault()
-            bvelocityI = -4
-        }
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white font-sans p-4">
+      <h1 className="text-4xl sm:text-5xl font-bold mb-4">Tic Tac Toe</h1>
+      
+      <div className="h-12 flex items-center justify-center text-2xl sm:text-3xl font-semibold mb-4 text-emerald-500">
+        {status}
+      </div>
 
-        window.addEventListener('keydown', handleKeyDown)
-        window.addEventListener('touchstart', handleKeyDown)
+      <div className="grid grid-cols-3 grid-rows-3 gap-3 w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] ">
+        {board.map((value, index) => (
+          <Boxes 
+            key={index} 
+            value={value} 
+            onBoxclick={() => handleClick(index)} 
+          />
+        ))}
+      </div>
 
-        function update(timestamp) {
-            if (!lastSpawnTime) lastSpawnTime = timestamp
-
-            if (timestamp - lastSpawnTime > spawnInterval) {
-                const randomTopY = Math.floor(Math.random() * -140) - 40 
-                
-                setPipes(prevPipes => [
-                    ...prevPipes,
-                    {
-                        id: Date.now(),
-                        x: 450,
-                        topY: randomTopY,
-                        passed: false
-                    }
-                ])
-                lastSpawnTime = timestamp
-            }
-
-            setPipes(prevPipes => {
-                return prevPipes
-                    .map(pipe => {
-                        const nextX = pipe.x + velocityX
-                        
-                        if (!pipe.passed && pipe.x >= 40 && nextX < 40) {
-                            incPoint()
-                            return { ...pipe, x: nextX, passed: true }
-                        }
-                        return { ...pipe, x: nextX }
-                    })
-                    .filter(pipe => pipe.x > -100)
-            })
-            
-            bvelocityI += gravity
-            bcurrentY += bvelocityI
-            
-            if (bird.current) {
-                bird.current.style.transform = `translateY(${bcurrentY}px)`
-            }
-
-            if (bcurrentY > endY || bcurrentY < topY) {
-                cancelAnimationFrame(animationFrameId) 
-                window.removeEventListener('keydown', handleKeyDown)
-                alert("Game Over - Hit Boundaries!")
-                return 
-            }
-
-            if (bird.current) {
-                const birdRect = bird.current.getBoundingClientRect()
-                const activePipes = document.querySelectorAll('.game-pipe')
-                
-                for (let pipeEl of activePipes) {
-                    const pipeRect = pipeEl.getBoundingClientRect()
-                    
-                    if (
-                        birdRect.left < pipeRect.right &&
-                        birdRect.right > pipeRect.left &&
-                        birdRect.top < pipeRect.bottom &&
-                        birdRect.bottom > pipeRect.top
-                    ) {
-                        cancelAnimationFrame(animationFrameId)
-                        window.removeEventListener('keydown', handleKeyDown)
-                        alert("Game Over - Crashed into a Pipe!")
-                        return
-                    }
-                }
-            }
-
-            animationFrameId = requestAnimationFrame(update)
-        }
-
-        animationFrameId = requestAnimationFrame(update)
-        
-        return () => {
-            cancelAnimationFrame(animationFrameId)
-            window.removeEventListener('keydown', handleKeyDown)
-        }
-    }, [])
-
-    return (
-        <div>
-            <Link to="/">← Back</Link>
-    
-            <div id="body" className="flex w-screen justify-center items-center">
-                <div id="main" className="bg-blue-400 w-110 relative flex overflow-hidden"> 
-           
-                    <img src={wallpaperImg} style={{ height: '100%' }} alt="img" />
-   
-                    <div id="points" className='absolute ml-[5%] z-20 text-4xl text-white font-bold'>{point}</div>
-                    
-                    <div ref={bird} className='z-10 h-10 w-12 object-contain absolute top-40 translate-x-10 '>
-                        <img src={birdImg} alt="bird" className='overflow-hidden scale-[2] ' />
-                    </div>
-                    
-                    {pipes.map(pipe => (
-                        <React.Fragment key={pipe.id}>
-                            <div 
-                                className='absolute z-11 game-pipe' 
-                                style={{ transform: `translate3d(${pipe.x}px, ${pipe.topY}px, 0)` }}
-                            >
-                                <img src={topPipeImg} alt="" className='h-65' />
-                            </div>
-                            
-                            <div 
-                                className='absolute z-11 game-pipe' 
-                                style={{ transform: `translate3d(${pipe.x}px, ${pipe.topY}px, 0) translateY(380px)` }}
-                            >
-                                <img src={botPipeImg} alt="" className='h-65' />
-                            </div>
-                        </React.Fragment>
-                    ))}
-                </div>
-            </div>
-        </div>
-    )
+      <button 
+        onClick={resetGame}
+        className="mt-10 px-8 py-3 bg-emerald-600 hover:bg-emerald-600 font-bold text-lg rounded-lg transition-all active:scale-95"
+      >
+        Reset Game
+      </button>
+    </div>
+  )
 }
 
-export default Flappbird
+function calculateWinner(squares) {
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ]
+  for (let i = 0; i < lines.length; i++) {
+    const [a, b, c] = lines[i]
+    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+      return squares[a]
+    }
+  }
+  return null
+}
+
+export default Tic
