@@ -1,95 +1,155 @@
-import React, { useState } from 'react'
-import Boxes from './boxes'
+import React, { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 
-function Tic() {
-    const [toSwitch, setSwitch] = useState(true)
-    const [arrData, setarrdata] = useState([null, null, null, null, null, null, null, null, null])
-    const [winner, setWinner] = useState(null)
-    const [isDraw, setIsDraw] = useState(false)
+import wallpaperImg from '../assets/flappy bird wallpaper.png'
+import birdImg from '../assets/du0i1k2io4j6iveqeul81b2nme.png'
+import topPipeImg from '../assets/toppng.com-flappy-bird-pipe-transparent-281x1080.png'
+import botPipeImg from '../assets/opppng.com-flappy-bird-pipe-transparent-281x1080.png'
 
-    const WINNING_COMBINATIONS = [
-        [0, 1, 2],
-        [3, 4, 5],
-        [6, 7, 8],
+function Flappbird() {
+    const [point, setPoint] = useState(0)
+    const [pipes, setPipes] = useState([])
+    
+    const bird = useRef(null)
+
+    function incPoint() {
+        setPoint(prev => prev + 1/2)
+    }
+
+    useEffect(() => {
+        let velocityX = -2
+        let animationFrameId
         
-        [0, 3, 6],
-        [1, 4, 7],
-        [2, 5, 8],
+        let bvelocityI = 0 
+        let bcurrentY = 0  
+        let gravity = 0.2
+        let endY = 450   
+        let topY = -180  
+        let lastSpawnTime = 0
+        let spawnInterval = 1500
         
-        [0, 4, 8],
-        [2, 4, 6]
-    ];
+        function handleKeyDown(e) {
+            e.preventDefault()
+            bvelocityI = -4
+        }
 
-    const a = "X"
-    const b = "O"
+        window.addEventListener('keydown', handleKeyDown)
+        window.addEventListener('touchstart', handleKeyDown)
 
-    function onclicked(index) {
-        if (arrData[index] !== null || winner) return;
-        
-        
-        let value = toSwitch ? a : b
-        setSwitch(prev => !prev)
-        
-        const newarrData = [...arrData]
-        newarrData[index] = value
-        setarrdata(newarrData)
+        function update(timestamp) {
+            if (!lastSpawnTime) lastSpawnTime = timestamp
 
-        for (let i = 0; i < WINNING_COMBINATIONS.length; i++) {
-            const [pos1, pos2, pos3] = WINNING_COMBINATIONS[i]
-
-            if (
-                newarrData[pos1] && 
-                newarrData[pos1] === newarrData[pos2] && 
-                newarrData[pos1] === newarrData[pos3]
-            ) {
-                setWinner(newarrData[pos1]);
-                return;
+            if (timestamp - lastSpawnTime > spawnInterval) {
+                const randomTopY = Math.floor(Math.random() * -140) - 40 
+                
+                setPipes(prevPipes => [
+                    ...prevPipes,
+                    {
+                        id: Date.now(),
+                        x: 450,
+                        topY: randomTopY,
+                        passed: false
+                    }
+                ])
+                lastSpawnTime = timestamp
             }
+
+            setPipes(prevPipes => {
+                return prevPipes
+                    .map(pipe => {
+                        const nextX = pipe.x + velocityX
+                        
+                        if (!pipe.passed && pipe.x >= 40 && nextX < 40) {
+                            incPoint()
+                            return { ...pipe, x: nextX, passed: true }
+                        }
+                        return { ...pipe, x: nextX }
+                    })
+                    .filter(pipe => pipe.x > -100)
+            })
+            
+            bvelocityI += gravity
+            bcurrentY += bvelocityI
+            
+            if (bird.current) {
+                bird.current.style.transform = `translateY(${bcurrentY}px)`
+            }
+
+            if (bcurrentY > endY || bcurrentY < topY) {
+                cancelAnimationFrame(animationFrameId) 
+                window.removeEventListener('keydown', handleKeyDown)
+                alert("Game Over - Hit Boundaries!")
+                return 
+            }
+
+            if (bird.current) {
+                const birdRect = bird.current.getBoundingClientRect()
+                const activePipes = document.querySelectorAll('.game-pipe')
+                
+                for (let pipeEl of activePipes) {
+                    const pipeRect = pipeEl.getBoundingClientRect()
+                    
+                    if (
+                        birdRect.left < pipeRect.right &&
+                        birdRect.right > pipeRect.left &&
+                        birdRect.top < pipeRect.bottom &&
+                        birdRect.bottom > pipeRect.top
+                    ) {
+                        cancelAnimationFrame(animationFrameId)
+                        window.removeEventListener('keydown', handleKeyDown)
+                        alert("Game Over - Crashed into a Pipe!")
+                        return
+                    }
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(update)
         }
 
-        if (!newarrData.includes(null)) {
-            setIsDraw(true);
+        animationFrameId = requestAnimationFrame(update)
+        
+        return () => {
+            cancelAnimationFrame(animationFrameId)
+            window.removeEventListener('keydown', handleKeyDown)
         }
-    }
-
-    function resetGame() {
-        setarrdata([null, null, null, null, null, null, null, null, null]);
-        setWinner(null);
-        setIsDraw(false);
-        setSwitch(true);
-    }
+    }, [])
 
     return (
-        <>
-            <div id="box" className="bg-gray-500 h-screen w-screen flex flex-col justify-center items-center p-4 gap-6">
-                
-                <div className="text-white text-4xl font-extrabold h-12 flex items-center justify-center">
-                    {winner && `${winner} Won!`}
-                    {!winner && isDraw && "It's a Draw!"}
-                    {!winner && !isDraw && `Turn: ${toSwitch ? a : b}`}
+        <div>
+            <Link to="/">← Back</Link>
+    
+            <div id="body" className="flex w-screen justify-center items-center">
+                <div id="main" className="bg-blue-400 w-110 relative flex overflow-hidden"> 
+           
+                    <img src={wallpaperImg} style={{ height: '100%' }} alt="img" />
+   
+                    <div id="points" className='absolute ml-[5%] z-20 text-4xl text-white font-bold'>{point}</div>
+                    
+                    <div ref={bird} className='z-10 h-10 w-12 object-contain absolute top-40 translate-x-10 '>
+                        <img src={birdImg} alt="bird" className='overflow-hidden scale-[2] ' />
+                    </div>
+                    
+                    {pipes.map(pipe => (
+                        <React.Fragment key={pipe.id}>
+                            <div 
+                                className='absolute z-11 game-pipe' 
+                                style={{ transform: `translate3d(${pipe.x}px, ${pipe.topY}px, 0)` }}
+                            >
+                                <img src={topPipeImg} alt="" className='h-65' />
+                            </div>
+                            
+                            <div 
+                                className='absolute z-11 game-pipe' 
+                                style={{ transform: `translate3d(${pipe.x}px, ${pipe.topY}px, 0) translateY(380px)` }}
+                            >
+                                <img src={botPipeImg} alt="" className='h-65' />
+                            </div>
+                        </React.Fragment>
+                    ))}
                 </div>
-
-                <div id="container" className="bg-white w-full max-w-lg aspect-square rounded-2xl shadow-2xl grid grid-cols-3 grid-rows-3">
-                    <Boxes id="1" onBoxclick={() => onclicked(0)} value={arrData[0]} />
-                    <Boxes id="2" onBoxclick={() => onclicked(1)} value={arrData[1]} />
-                    <Boxes id="3" onBoxclick={() => onclicked(2)} value={arrData[2]} />
-                    <Boxes id="4" onBoxclick={() => onclicked(3)} value={arrData[3]} />
-                    <Boxes id="5" onBoxclick={() => onclicked(4)} value={arrData[4]} />
-                    <Boxes id="6" onBoxclick={() => onclicked(5)} value={arrData[5]} />
-                    <Boxes id="7" onBoxclick={() => onclicked(6)} value={arrData[6]} />
-                    <Boxes id="8" onBoxclick={() => onclicked(7)} value={arrData[7]} />
-                    <Boxes id="9" onBoxclick={() => onclicked(8)} value={arrData[8]} />
-                </div>
-
-                <button 
-                    onClick={resetGame} 
-                    className="bg-white text-gray-800 font-bold px-8 py-3 rounded-xl shadow-lg hover:bg-gray-100 transition duration-200 text-lg active:scale-95"
-                >
-                    Restart
-                </button>
             </div>
-        </>
+        </div>
     )
 }
 
-export default Tic
+export default Flappbird
