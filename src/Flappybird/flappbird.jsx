@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
-// 1. Standard Vite Asset Imports (Solves the 'npm run build' asset mismatch)
 import flappyWallpaper from '../assets/flappy bird wallpaper.png';
 import birdImg from '../assets/du0i1k2io4j6iveqeul81b2nme.png';
 import pipeTop from '../assets/toppng.com-flappy-bird-pipe-transparent-281x1080.png';
@@ -10,6 +9,7 @@ import pipeBottom from '../assets/opppng.com-flappy-bird-pipe-transparent-281x10
 function Flappbird() {
     const [point, setPoint] = useState(0);
     const [pipes, setPipes] = useState([]);
+    const [gameState, setGameState] = useState('MENU');
     
     const bird = useRef(null);
 
@@ -17,7 +17,15 @@ function Flappbird() {
         setPoint(prev => prev + 1 / 2);
     }
 
+    function startGame() {
+        setPoint(0);
+        setPipes([]);
+        setGameState('PLAYING');
+    }
+
     useEffect(() => {
+        if (gameState !== 'PLAYING') return;
+
         let velocityX = -2;
         let animationFrameId;
         
@@ -30,21 +38,18 @@ function Flappbird() {
         let spawnInterval = 1500;
         
         function handleKeyDown(e) {
-            // Prevent default behavior for actual key events (like spacebar scrolling down)
             if (e && typeof e.preventDefault === 'function') {
                 e.preventDefault();
             }
             bvelocityY = -4;
         }
 
-        // Attach event listeners to window
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('touchstart', handleKeyDown, { passive: false });
 
         function update(timestamp) {
             if (!lastSpawnTime) lastSpawnTime = timestamp;
 
-            // Spawn pipes
             if (timestamp - lastSpawnTime > spawnInterval) {
                 const randomTopY = Math.floor(Math.random() * -140) - 40; 
                 
@@ -60,7 +65,6 @@ function Flappbird() {
                 lastSpawnTime = timestamp;
             }
 
-            // Move pipes and evaluate point increments
             setPipes(prevPipes => {
                 return prevPipes
                     .map(pipe => {
@@ -75,7 +79,6 @@ function Flappbird() {
                     .filter(pipe => pipe.x > -100);
             });
             
-            // Apply gravity to the bird
             bvelocityY += gravity;
             bcurrentY += bvelocityY;
             
@@ -83,16 +86,15 @@ function Flappbird() {
                 bird.current.style.transform = `translateY(${bcurrentY}px)`;
             }
 
-            // Boundary collision handling
             if (bcurrentY > endY || bcurrentY < topY) {
                 cancelAnimationFrame(animationFrameId); 
                 window.removeEventListener('keydown', handleKeyDown);
                 window.removeEventListener('touchstart', handleKeyDown);
+                setGameState('MENU');
                 alert("Game Over - Hit Boundaries!");
                 return; 
             }
 
-            // Pipe collision checking
             if (bird.current) {
                 const birdRect = bird.current.getBoundingClientRect();
                 const activePipes = document.querySelectorAll('.game-pipe');
@@ -109,6 +111,7 @@ function Flappbird() {
                         cancelAnimationFrame(animationFrameId);
                         window.removeEventListener('keydown', handleKeyDown);
                         window.removeEventListener('touchstart', handleKeyDown);
+                        setGameState('MENU');
                         alert("Game Over - Crashed into a Pipe!");
                         return;
                     }
@@ -120,13 +123,12 @@ function Flappbird() {
 
         animationFrameId = requestAnimationFrame(update);
         
-        // Clean up subscriptions
         return () => {
             cancelAnimationFrame(animationFrameId);
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('touchstart', handleKeyDown);
         };
-    }, []);
+    }, [gameState]);
 
     return (
         <div>
@@ -135,7 +137,6 @@ function Flappbird() {
             <div id="body" className="flex w-screen justify-center items-center">
                 <div id="main" className="bg-blue-400 w-110 relative flex overflow-hidden"> 
            
-                    {/* Using imported asset hooks */}
                     <img src={flappyWallpaper} style={{ height: '100%' }} alt="background" />
    
                     <div id="points" className='absolute ml-[5%] z-20 text-4xl text-white font-bold'>{point}</div>
@@ -146,7 +147,6 @@ function Flappbird() {
                     
                     {pipes.map(pipe => (
                         <React.Fragment key={pipe.id}>
-                            {/* Top Pipe */}
                             <div 
                                 className='absolute z-11 game-pipe' 
                                 style={{ transform: `translate3d(${pipe.x}px, ${pipe.topY}px, 0)` }}
@@ -154,7 +154,6 @@ function Flappbird() {
                                 <img src={pipeTop} alt="pipe-top" className='h-65' />
                             </div>
                             
-                            {/* Bottom Pipe */}
                             <div 
                                 className='absolute z-11 game-pipe' 
                                 style={{ transform: `translate3d(${pipe.x}px, ${pipe.topY}px, 0) translateY(380px)` }}
@@ -163,6 +162,21 @@ function Flappbird() {
                             </div>
                         </React.Fragment>
                     ))}
+
+                    {gameState === 'MENU' && (
+                        <div className="absolute inset-0 bg-black/50 z-30 flex flex-col justify-center items-center gap-4">
+                            <h1 className="text-4xl text-white font-extrabold tracking-wider drop-shadow-md">
+                                FLAPPY BIRD
+                            </h1>
+                            <button 
+                                onClick={startGame}
+                                className="px-6 py-3 bg-orange-500 text-white font-bold rounded-lg shadow-lg hover:bg-orange-600 transition active:scale-95 text-xl cursor-pointer"
+                            >
+                                {point > 0 ? 'Play Again' : 'Start Game'}
+                            </button>
+                        </div>
+                    )}
+
                 </div>
             </div>
         </div>
